@@ -147,7 +147,7 @@
             searchMovie(title, omdbApiKey)
                 .then(async results => {
                     resultsList.innerHTML = ''; // Clear previous results
-
+                    
                     if (results.length > 0) {
                         for (const movie of results) {
                             const movieDetails = await getMovieDetails(movie.imdbID, tmdbApiKey);
@@ -163,7 +163,7 @@
 
                                 link.href = `https://vidsrc.me/embed/${movie.imdbID}/`;
                                 link.target = '_blank';
-                                link.textContent = `Title: ${movie.Title}, Year: ${movie.Year}`;
+                                link.textContent = `${movie.Title} (${movie.Year})`;
 
                                 listItem.appendChild(img);
                                 listItem.appendChild(link);
