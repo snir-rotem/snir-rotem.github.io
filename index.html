@@ -79,7 +79,7 @@
 
     <script>
         async function searchMovie(title, apiKey) {
-            const apiUrl = `http://www.omdbapi.com/?apikey=${apiKey}&s=${encodeURIComponent(title)}`;
+            const apiUrl = `https://www.omdbapi.com/?apikey=${apiKey}&s=${encodeURIComponent(title)}`;
 
             try {
                 const response = await fetch(apiUrl);
