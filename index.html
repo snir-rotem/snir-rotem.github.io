@@ -156,18 +156,20 @@
                                 const listItem = document.createElement('li');
                                 const link = document.createElement('a');
                                 const img = document.createElement('img');
+                                const textContent = document.createElement('div');
 
                                 img.src = `https://image.tmdb.org/t/p/w185${movieDetails.poster_path}`;
                                 img.alt = 'Movie Poster';
-                                img.style.width = '100px'; // Set a specific width for the image
+
+                                textContent.textContent = `${movie.Title}  (${movie.Year})`;
 
                                 link.href = `https://vidsrc.me/embed/${movie.imdbID}/`;
                                 link.target = '_blank';
-                                link.textContent = `Title: ${movie.Title}, Year: ${movie.Year}`;
 
-                                listItem.appendChild(img);
-                                link.appendChild(listItem); // Wrap the entire li content in the anchor tag
-                                resultsList.appendChild(link);
+                                link.appendChild(img);
+                                link.appendChild(textContent);
+                                listItem.appendChild(link);
+                                resultsList.appendChild(listItem);
                             }
                         }
                     } else {
