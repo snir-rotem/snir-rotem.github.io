@@ -4,15 +4,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Movie & Series Search</title>
+    <title>Movie Search</title>
 
     <style>
         body {
             font-family: 'Arial', sans-serif;
             margin: 20px;
             text-align: center;
-            background-color: rgb(50, 50, 50);
-            color: white;
+            background-color: rgb(50,50,50);
         }
 
         label {
@@ -21,8 +20,7 @@
             font-size: 16px;
         }
 
-        input,
-        select {
+        input {
             width: 80%;
             padding: 10px;
             margin-bottom: 10px;
@@ -48,13 +46,12 @@
         }
 
         li {
-            margin: 5px 0;
-            font-size: 14px;
-            border: 2px solid rgb(110, 110, 110);
-            width: 220px;
-            padding: 10px;
-            border-radius: 10px;
-            text-align: center;
+                margin: 5px 0;
+                font-size: 14px;
+                border: 2px solid rgb(110,110,110);
+                width: 200px;
+                padding: 10px;
+                border-radius: 10px;
         }
 
         a {
@@ -70,59 +67,32 @@
             display: block;
             margin: 0 auto;
         }
-
-        .episodes-list {
-            text-align: left;
-            margin-top: 10px;
-            max-height: 200px;
-            overflow-y: auto;
-            padding-left: 15px;
-        }
-
-        .episodes-list li {
-            border: none;
-            width: auto;
-            padding: 4px;
-            margin: 0;
-            font-size: 13px;
-            text-align: left;
-        }
     </style>
 </head>
 
 <body>
 
-    <label for="movieTitle">Enter Title:</label>
-    <input type="text" id="movieTitle" placeholder="e.g., Inception or Breaking Bad">
-
-    <label for="searchType">Search Type:</label>
-    <select id="searchType">
-        <option value="all">All</option>
-        <option value="movie">Movies</option>
-        <option value="series">Series</option>
-    </select>
+    <label for="movieTitle">Enter Movie Title:</label>
+    <input type="text" id="movieTitle" placeholder="e.g., Inception">
 
     <button onclick="searchAndDisplayResults()">Search</button>
 
     <ul id="resultsList"></ul>
 
     <script>
-        async function searchMovie(title, apiKey, type = 'all') {
-            let apiUrl = `https://www.omdbapi.com/?apikey=${apiKey}&s=${encodeURIComponent(title)}`;
-            if (type !== 'all') {
-                apiUrl += `&type=${type}`;
-            }
+        async function searchMovie(title, apiKey) {
+            const apiUrl = `https://www.omdbapi.com/?apikey=${apiKey}&s=${encodeURIComponent(title)}`;
 
             try {
                 const response = await fetch(apiUrl);
                 const data = await response.json();
 
                 if (response.ok && data.Response === 'True') {
+                    // Include IMDb ID in the results for creating links
                     return data.Search.map(movie => ({
                         Title: movie.Title,
                         Year: movie.Year,
                         imdbID: movie.imdbID,
-                        Type: movie.Type
                     }));
                 } else {
                     return [];
@@ -134,6 +104,7 @@
         }
 
         async function getMovieDetails(imdbID, apiKey) {
+
             const options = {
                 method: 'GET',
                 headers: {
@@ -147,9 +118,10 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    if (data.movie_results.length) return data.movie_results[0];
-                    if (data.tv_results.length) return data.tv_results[0];
-                    return null;
+                    if (data.movie_results.length)
+                        return data.movie_results[0]
+
+                    return data;
                 } else {
                     return null;
                 }
@@ -159,38 +131,20 @@
             }
         }
 
-        async function getSeasonEpisodes(imdbID, season, apiKey) {
-            const apiUrl = `https://www.omdbapi.com/?apikey=${apiKey}&i=${imdbID}&Season=${season}`;
-            try {
-                const response = await fetch(apiUrl);
-                const data = await response.json();
-                if (response.ok && data.Response === 'True') {
-                    return data;
-                } else {
-                    return null;
-                }
-            } catch (error) {
-                console.error(`OMDb Episode Error: ${error.message}`);
-                return null;
-            }
-        }
-
         function searchAndDisplayResults() {
-            const omdbApiKey = 'ca80bff0'; // Replace with your OMDb API key
-            const tmdbApiKey = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI4ZGZlNDUyYzY4M2U4ZDNjZmM1YjRmNGVmYjY3Mzg0NCIsInN1YiI6IjY1OTA2M2NhZjVmMWM1NzY5MDAwOWVmMCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.AX0llIBj3wsCy1WTjQdJ-y6VBGwYgWLiN-rDZ_5QXFM'; // Replace with your TMDb API key
+            const omdbApiKey = 'ca80bff0'; // Replace with your actual OMDb API key
+            const tmdbApiKey = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI4ZGZlNDUyYzY4M2U4ZDNjZmM1YjRmNGVmYjY3Mzg0NCIsInN1YiI6IjY1OTA2M2NhZjVmMWM1NzY5MDAwOWVmMCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.AX0llIBj3wsCy1WTjQdJ-y6VBGwYgWLiN-rDZ_5QXFM'; // Replace with your actual TMDb API key
             const movieTitleInput = document.getElementById('movieTitle');
             const resultsList = document.getElementById('resultsList');
-            const typeSelect = document.getElementById('searchType');
 
             const title = movieTitleInput.value.trim();
-            const type = typeSelect.value;
 
             if (title === '') {
-                alert('Please enter a title.');
+                alert('Please enter a movie title.');
                 return;
             }
 
-            searchMovie(title, omdbApiKey, type)
+            searchMovie(title, omdbApiKey)
                 .then(async results => {
                     resultsList.innerHTML = ''; // Clear previous results
 
@@ -204,55 +158,17 @@
                                 const img = document.createElement('img');
                                 const textContent = document.createElement('div');
 
-                                img.src = movieDetails.poster_path
-                                    ? `https://image.tmdb.org/t/p/w185${movieDetails.poster_path}`
-                                    : '';
-                                img.alt = 'Poster';
+                                img.src = `https://image.tmdb.org/t/p/w185${movieDetails.poster_path}`;
+                                img.alt = 'Movie Poster';
 
-                                textContent.textContent = `${movie.Title} (${movie.Year}) [${movie.Type}]`;
+                                textContent.textContent = `${movie.Title}  (${movie.Year})`;
 
-                                if (movie.Type === 'movie') {
-                                    link.href = `https://vidsrc.me/embed/${movie.imdbID}/`;
-                                    link.target = '_blank';
-                                    link.appendChild(img);
-                                    link.appendChild(textContent);
-                                    listItem.appendChild(link);
-                                } else if (movie.Type === 'series') {
-                                    // Show poster + title
-                                    listItem.appendChild(img);
-                                    listItem.appendChild(textContent);
+                                link.href = `https://vidsrc.me/embed/${movie.imdbID}/`;
+                                link.target = '_blank';
 
-                                    // Add dropdown for seasons
-                                    const seasonSelect = document.createElement('select');
-                                    seasonSelect.innerHTML = `<option>Loading seasons...</option>`;
-                                    listItem.appendChild(seasonSelect);
-
-                                    // Fetch first season to know total seasons
-                                    const firstSeason = await getSeasonEpisodes(movie.imdbID, 1, omdbApiKey);
-                                    if (firstSeason) {
-                                        seasonSelect.innerHTML = '';
-                                        for (let s = 1; s <= parseInt(firstSeason.totalSeasons); s++) {
-                                            const opt = document.createElement('option');
-                                            opt.value = s;
-                                            opt.textContent = `Season ${s}`;
-                                            seasonSelect.appendChild(opt);
-                                        }
-
-                                        // Episode list container
-                                        const episodesContainer = document.createElement('ul');
-                                        episodesContainer.classList.add('episodes-list');
-                                        listItem.appendChild(episodesContainer);
-
-                                        // Load first season by default
-                                        loadEpisodes(movie.imdbID, 1, omdbApiKey, episodesContainer);
-
-                                        // Load episodes when season changes
-                                        seasonSelect.addEventListener('change', () => {
-                                            loadEpisodes(movie.imdbID, seasonSelect.value, omdbApiKey, episodesContainer);
-                                        });
-                                    }
-                                }
-
+                                link.appendChild(img);
+                                link.appendChild(textContent);
+                                listItem.appendChild(link);
                                 resultsList.appendChild(listItem);
                             }
                         }
@@ -264,22 +180,7 @@
                 });
         }
 
-        async function loadEpisodes(imdbID, season, apiKey, container) {
-            container.innerHTML = 'Loading episodes...';
-            const seasonData = await getSeasonEpisodes(imdbID, season, apiKey);
-            if (seasonData) {
-                container.innerHTML = '';
-                seasonData.Episodes.forEach(ep => {
-                    const epItem = document.createElement('li');
-                    epItem.textContent = `Ep ${ep.Episode}: ${ep.Title} (${ep.Released})`;
-                    container.appendChild(epItem);
-                });
-            } else {
-                container.innerHTML = 'No episodes found.';
-            }
-        }
-
-        // Add Enter key listener
+        // Add event listener for Enter key press
         document.getElementById('movieTitle').addEventListener('keyup', function (event) {
             if (event.key === 'Enter') {
                 searchAndDisplayResults();
