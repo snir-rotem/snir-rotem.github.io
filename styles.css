@@ -113,7 +113,7 @@ label {
     color: var(--text-secondary);
     border: none;
     border-right: 1px solid var(--border-default);
-    height: 40px;
+    height: 38px;
 }
 
 .toggle-btn:last-child {
