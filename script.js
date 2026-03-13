@@ -1,0 +1,409 @@
+async function searchByTitle(title, apiKey, type, page = 1) {
+    const params = new URLSearchParams({ apikey: apiKey, s: title, page: String(page) });
+    if (type === 'movie' || type === 'series') params.set('type', type);
+    const apiUrl = `https://www.omdbapi.com/?${params.toString()}`;
+
+    try {
+        const response = await fetch(apiUrl);
+        const data = await response.json();
+
+        if (response.ok && data.Response === 'True') {
+            const totalResults = parseInt(data.totalResults, 10) || 0;
+            const results = data.Search.map(item => ({
+                Title: item.Title,
+                Year: item.Year,
+                imdbID: item.imdbID,
+                Type: item.Type,
+            }));
+            return { results, totalResults };
+        }
+        return { results: [], totalResults: 0 };
+    } catch (error) {
+        console.error(`OMDb API Error: ${error.message}`);
+        return { results: [], totalResults: 0 };
+    }
+}
+
+async function getSeriesTotalSeasons(imdbID, apiKey) {
+    try {
+        const response = await fetch(`https://www.omdbapi.com/?apikey=${apiKey}&i=${encodeURIComponent(imdbID)}`);
+        const data = await response.json();
+        if (response.ok && data.totalSeasons) return parseInt(data.totalSeasons, 10) || 0;
+        return 0;
+    } catch (error) {
+        console.error(`OMDb API Error: ${error.message}`);
+        return 0;
+    }
+}
+
+const tmdbOptions = (apiKey) => ({
+    method: 'GET',
+    headers: {
+        accept: 'application/json',
+        Authorization: 'Bearer ' + apiKey
+    }
+});
+
+async function getMovieDetails(imdbID, apiKey) {
+    try {
+        const response = await fetch(`https://api.themoviedb.org/3/find/${imdbID}?external_source=imdb_id`, tmdbOptions(apiKey));
+        const data = await response.json();
+        if (response.ok && data.movie_results && data.movie_results.length)
+            return { movie: data.movie_results[0] };
+        return null;
+    } catch (error) {
+        console.error(`TMDb API Error: ${error.message}`);
+        return null;
+    }
+}
+
+async function getSeriesDetails(imdbID, apiKey) {
+    try {
+        const response = await fetch(`https://api.themoviedb.org/3/find/${imdbID}?external_source=imdb_id`, tmdbOptions(apiKey));
+        const data = await response.json();
+        if (response.ok && data.tv_results && data.tv_results.length)
+            return data.tv_results[0];
+        return null;
+    } catch (error) {
+        console.error(`TMDb API Error: ${error.message}`);
+        return null;
+    }
+}
+
+const SEARCH_MODE_KEY = 'mode';
+const PLACEHOLDERS = { movie: 'Search For a Movie', series: 'Search For a Series' };
+
+const RECENT_MOVIE_SEARCHES_KEY = 'recentMovieSearches';
+const RECENT_SERIES_SEARCHES_KEY = 'recentSeriesSearches';
+const SEEN_MOVIES_KEY = 'seenMovies';
+const MAX_RECENT_SEARCHES = 20;
+
+function getRecentSearches(mode) {
+    const key = mode === 'series' ? RECENT_SERIES_SEARCHES_KEY : RECENT_MOVIE_SEARCHES_KEY;
+    try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : [];
+    } catch {
+        return [];
+    }
+}
+
+function addRecentSearch(query, mode) {
+    const q = query.trim();
+    if (!q) return;
+    const key = mode === 'series' ? RECENT_SERIES_SEARCHES_KEY : RECENT_MOVIE_SEARCHES_KEY;
+    let list = getRecentSearches(mode);
+    list = list.filter((s) => s.toLowerCase() !== q.toLowerCase());
+    list.unshift(q);
+    list = list.slice(0, MAX_RECENT_SEARCHES);
+    localStorage.setItem(key, JSON.stringify(list));
+}
+
+function getSeenMovies() {
+    try {
+        const raw = localStorage.getItem(SEEN_MOVIES_KEY);
+        const arr = raw ? JSON.parse(raw) : [];
+        return new Set(arr);
+    } catch {
+        return new Set();
+    }
+}
+
+function addSeenMovie(imdbID) {
+    const set = getSeenMovies();
+    set.add(imdbID);
+    localStorage.setItem(SEEN_MOVIES_KEY, JSON.stringify([...set]));
+}
+
+function getSearchModeFromUrl() {
+    const params = new URLSearchParams(window.location.search);
+    const mode = params.get(SEARCH_MODE_KEY);
+    return mode === 'series' ? 'series' : 'movie';
+}
+
+function setSearchModeInUrl(mode) {
+    const url = new URL(window.location.href);
+    url.searchParams.set(SEARCH_MODE_KEY, mode);
+    window.history.replaceState({}, '', url.toString());
+}
+
+function getSearchMode() {
+    return getSearchModeFromUrl();
+}
+
+function syncUiFromUrl() {
+    const mode = getSearchModeFromUrl();
+    document.querySelectorAll('.toggle-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === mode);
+    });
+    const input = document.getElementById('movieTitle');
+    if (input) input.placeholder = PLACEHOLDERS[mode];
+}
+
+const omdbApiKey = 'ca80bff0';
+const tmdbApiKey = 'eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiI4ZGZlNDUyYzY4M2U4ZDNjZmM1YjRmNGVmYjY3Mzg0NCIsInN1YiI6IjY1OTA2M2NhZjVmMWM1NzY5MDAwOWVmMCIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.AX0llIBj3wsCy1WTjQdJ-y6VBGwYgWLiN-rDZ_5QXFM';
+
+let currentSearchState = null;
+
+function setResultsSummary(shown, total) {
+    const el = document.getElementById('resultsSummary');
+    if (!el) return;
+    if (total === 0) {
+        el.textContent = '';
+        el.style.display = 'none';
+    } else {
+        el.style.display = 'block';
+        el.textContent = `Showing ${shown} results out of ${total}`;
+    }
+}
+
+function setLoadMoreVisibility(hasMore) {
+    const wrap = document.querySelector('.load-more-wrap');
+    const btn = document.getElementById('loadMoreBtn');
+    if (wrap && btn) {
+        wrap.style.display = hasMore ? 'block' : 'none';
+    }
+}
+
+function dedupeById(items) {
+    const seen = new Set();
+    return items.filter(item => {
+        if (seen.has(item.imdbID)) return false;
+        seen.add(item.imdbID);
+        return true;
+    });
+}
+
+async function renderMovieResults(items, resultsList, append, seenMovies) {
+    const list = dedupeById(items.filter(item => item.Type === 'movie'));
+    for (const item of list) {
+        const details = await getMovieDetails(item.imdbID, tmdbApiKey);
+        if (details && details.movie) {
+            const movie = details.movie;
+            const listItem = document.createElement('li');
+            listItem.dataset.imdbId = item.imdbID;
+            const link = document.createElement('a');
+            const img = document.createElement('img');
+            const textContent = document.createElement('div');
+            img.src = `https://image.tmdb.org/t/p/w185${movie.poster_path}`;
+            img.alt = 'Movie Poster';
+            textContent.textContent = `${item.Title}  (${item.Year})`;
+            link.href = `https://vidsrc.me/embed/${item.imdbID}/`;
+            link.target = '_blank';
+            link.appendChild(img);
+            link.appendChild(textContent);
+            if (seenMovies.has(item.imdbID)) {
+                listItem.classList.add('seen');
+                const check = document.createElement('span');
+                check.className = 'seen-check';
+                check.setAttribute('aria-hidden', 'true');
+                listItem.appendChild(link);
+                listItem.appendChild(check);
+            } else {
+                listItem.appendChild(link);
+            }
+            link.addEventListener('click', () => addSeenMovie(item.imdbID));
+            resultsList.appendChild(listItem);
+        }
+    }
+}
+
+async function renderSeriesResults(items, resultsList, append, seenMovies) {
+    const list = dedupeById(items.filter(item => item.Type === 'series'));
+    for (const item of list) {
+        const seriesDetails = await getSeriesDetails(item.imdbID, tmdbApiKey);
+        if (seriesDetails) {
+            const totalSeasons = await getSeriesTotalSeasons(item.imdbID, omdbApiKey);
+            const listItem = document.createElement('li');
+            listItem.dataset.imdbId = item.imdbID;
+            const link = document.createElement('a');
+            link.href = `series.html?imdb=${encodeURIComponent(item.imdbID)}&tmdb=${seriesDetails.id}`;
+            link.classList.add('series-card');
+            const img = document.createElement('img');
+            img.src = seriesDetails.poster_path ? `https://image.tmdb.org/t/p/w185${seriesDetails.poster_path}` : '';
+            img.alt = item.Title;
+            const textContent = document.createElement('div');
+            textContent.textContent = `${item.Title} (${item.Year})`;
+            const seasonInfo = document.createElement('div');
+            seasonInfo.className = 'season-count';
+            seasonInfo.textContent = totalSeasons ? `${totalSeasons} season${totalSeasons !== 1 ? 's' : ''}` : '';
+            link.appendChild(img);
+            link.appendChild(textContent);
+            if (totalSeasons) link.appendChild(seasonInfo);
+            listItem.appendChild(link);
+            resultsList.appendChild(listItem);
+        }
+    }
+}
+
+function searchAndDisplayResults() {
+    const movieTitleInput = document.getElementById('movieTitle');
+    const resultsList = document.getElementById('resultsList');
+    const title = movieTitleInput.value.trim();
+    const mode = getSearchMode();
+
+    if (title === '') {
+        alert('Please enter a title.');
+        return;
+    }
+
+    const expectedType = mode === 'movie' ? 'movie' : 'series';
+    addRecentSearch(title, mode);
+    const seenMovies = getSeenMovies();
+
+    searchByTitle(title, omdbApiKey, expectedType, 1).then(async ({ results, totalResults }) => {
+        const filtered = results.filter(item => item.Type === expectedType);
+        const deduped = dedupeById(filtered);
+        resultsList.innerHTML = '';
+        refreshRecentSearchesDropdown();
+
+        currentSearchState = {
+            query: title,
+            mode,
+            totalResults,
+            page: 1,
+            totalFetched: deduped.length
+        };
+
+        if (deduped.length === 0 && totalResults === 0) {
+            const listItem = document.createElement('li');
+            listItem.textContent = 'No results found.';
+            resultsList.appendChild(listItem);
+            setResultsSummary(0, 0);
+            setLoadMoreVisibility(false);
+            return;
+        }
+
+        if (mode === 'movie') {
+            await renderMovieResults(deduped, resultsList, false, seenMovies);
+        } else {
+            await renderSeriesResults(deduped, resultsList, false, seenMovies);
+        }
+
+        const displayedCount = resultsList.querySelectorAll('li').length;
+        setResultsSummary(currentSearchState.totalFetched, totalResults);
+        setLoadMoreVisibility(currentSearchState.totalFetched < totalResults);
+    });
+}
+
+function loadMoreResults() {
+    if (!currentSearchState) return;
+    const { query, mode, totalResults, page } = currentSearchState;
+    const nextPage = page + 1;
+    const resultsList = document.getElementById('resultsList');
+    const seenMovies = getSeenMovies();
+
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+    if (loadMoreBtn) loadMoreBtn.disabled = true;
+
+    searchByTitle(query, omdbApiKey, mode === 'movie' ? 'movie' : 'series', nextPage).then(async ({ results }) => {
+        const expectedType = mode === 'movie' ? 'movie' : 'series';
+        const filtered = results.filter(item => item.Type === expectedType);
+        const existingIds = new Set(Array.from(resultsList.querySelectorAll('li[data-imdb-id]')).map(li => li.dataset.imdbId));
+        const deduped = dedupeById(filtered).filter(item => !existingIds.has(item.imdbID));
+        const toAdd = deduped;
+
+        currentSearchState.totalFetched += results.length;
+        currentSearchState.page = nextPage;
+
+        if (mode === 'movie') {
+            await renderMovieResults(toAdd, resultsList, true, seenMovies);
+        } else {
+            await renderSeriesResults(toAdd, resultsList, true, seenMovies);
+        }
+
+        setResultsSummary(currentSearchState.totalFetched, totalResults);
+        setLoadMoreVisibility(currentSearchState.totalFetched < totalResults);
+        if (loadMoreBtn) loadMoreBtn.disabled = false;
+    }).catch(() => {
+        if (loadMoreBtn) loadMoreBtn.disabled = false;
+    });
+}
+
+function refreshRecentSearchesDropdown() {
+    const dropdown = document.getElementById('recentSearchesDropdown');
+    const mode = getSearchMode();
+    const list = getRecentSearches(mode);
+    dropdown.innerHTML = '';
+    dropdown.setAttribute('aria-hidden', 'true');
+    if (list.length === 0) return;
+    list.forEach((query) => {
+        const row = document.createElement('button');
+        row.type = 'button';
+        row.className = 'recent-search-item';
+        row.textContent = query;
+        row.dataset.query = query;
+        row.addEventListener('click', () => {
+            const input = document.getElementById('movieTitle');
+            input.value = query;
+            hideRecentSearchesDropdown();
+            searchAndDisplayResults();
+        });
+        dropdown.appendChild(row);
+    });
+}
+
+function showRecentSearchesDropdown() {
+    const dropdown = document.getElementById('recentSearchesDropdown');
+    const list = getRecentSearches(getSearchMode());
+    if (list.length === 0) {
+        dropdown.classList.remove('open');
+        dropdown.setAttribute('aria-hidden', 'true');
+        return;
+    }
+    refreshRecentSearchesDropdown();
+    dropdown.classList.add('open');
+    dropdown.setAttribute('aria-hidden', 'false');
+}
+
+function hideRecentSearchesDropdown() {
+    const dropdown = document.getElementById('recentSearchesDropdown');
+    dropdown.classList.remove('open');
+    dropdown.setAttribute('aria-hidden', 'true');
+}
+
+(function setupRecentSearchesDropdown() {
+    const input = document.getElementById('movieTitle');
+    const dropdown = document.getElementById('recentSearchesDropdown');
+    if (!input || !dropdown) return;
+    input.addEventListener('focus', () => showRecentSearchesDropdown());
+    input.addEventListener('input', () => {
+        if (getRecentSearches(getSearchMode()).length) showRecentSearchesDropdown();
+        else hideRecentSearchesDropdown();
+    });
+    document.addEventListener('click', (e) => {
+        if (!input.contains(e.target) && !dropdown.contains(e.target))
+            hideRecentSearchesDropdown();
+    });
+})();
+
+document.getElementById('movieTitle').addEventListener('keyup', function (event) {
+    if (event.key === 'Enter') searchAndDisplayResults();
+});
+
+document.querySelectorAll('.toggle-btn').forEach(btn => {
+    btn.addEventListener('click', function () {
+        const mode = this.dataset.mode;
+        setSearchModeInUrl(mode);
+        syncUiFromUrl();
+        const resultsList = document.getElementById('resultsList');
+        if (resultsList) resultsList.innerHTML = '';
+        const input = document.getElementById('movieTitle');
+        if (input) input.value = '';
+        currentSearchState = null;
+        setResultsSummary(0, 0);
+        setLoadMoreVisibility(false);
+    });
+});
+
+(function setupLoadMore() {
+    const btn = document.getElementById('loadMoreBtn');
+    if (btn) btn.addEventListener('click', loadMoreResults);
+})();
+
+(function initSearchMode() {
+    const params = new URLSearchParams(window.location.search);
+    if (!params.has(SEARCH_MODE_KEY)) setSearchModeInUrl('movie');
+    syncUiFromUrl();
+})();
+window.addEventListener('popstate', syncUiFromUrl);

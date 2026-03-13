@@ -1,0 +1,131 @@
+.series-nav {
+    margin-bottom: 20px;
+    text-align: left;
+}
+
+.series-nav a {
+    color: var(--highlight, #e65100);
+    font-weight: 400;
+    display: inline-flex;
+    flex-direction: row;
+    gap: 0;
+}
+
+.series-nav a:hover {
+    text-decoration: underline;
+}
+
+.series-header {
+    margin-bottom: 24px;
+}
+
+.series-header h1 {
+    font-size: 1.5rem;
+    margin: 0 0 12px 0;
+}
+
+.season-selector-wrap {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.season-selector-wrap label {
+    margin: 0;
+    display: inline;
+}
+
+.season-selector-wrap select {
+    padding: 8px 12px;
+    font-size: 16px;
+    background: var(--bg-input, rgb(70, 70, 70));
+    color: var(--text-primary, #fff);
+    border: 2px solid var(--border-default, rgb(110, 110, 110));
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.episodes-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    justify-content: center;
+}
+
+.episodes-list li {
+    width: 180px;
+    position: relative;
+}
+
+.episodes-list li.seen {
+    border: 3px solid var(--highlight, #e65100);
+    box-shadow: 0 0 0 1px var(--highlight, #e65100);
+}
+
+.episodes-list .seen-check {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    width: 24px;
+    height: 24px;
+    background: var(--highlight, #e65100);
+    color: var(--text-primary, #fff);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    line-height: 1;
+    z-index: 2;
+    pointer-events: none;
+}
+
+.episodes-list .seen-check::after {
+    content: '✓';
+    font-weight: bold;
+}
+
+.episode-card {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text-primary, #fff);
+    font-weight: 700;
+    height: 100%;
+}
+
+.episode-card .episode-meta {
+    font-size: 12px;
+    font-weight: 400;
+    opacity: 0.9;
+}
+
+.episode-card .episode-poster {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    border-radius: 8px;
+    background: var(--border-muted, rgb(60, 60, 60));
+}
+
+.episode-card .episode-poster-fallback {
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    border-radius: 8px;
+    background: var(--border-muted, rgb(60, 60, 60));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: rgb(120, 120, 120);
+    font-size: 48px;
+}
+
+.episode-card .episode-name {
+    font-size: 14px;
+    font-weight: 700;
+}
